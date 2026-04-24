@@ -68,7 +68,7 @@ Returns normalized `points` compatible with most heatmap renderers:
 ```
 
 ## Secret handling
-Store AMap key as a secret and pass it into the payload as `apiKey`. Never hardcode the key in source files.
+Store the AMap key as a secret and pass it into the payload as `apiKey`. Never hardcode the key in source files.
 
 ## Example run_js call pattern
 ```javascript
@@ -78,11 +78,10 @@ const payload = JSON.stringify({
   params: {
     location: "116.397428,39.90923",
     radius: 2000,
-    keywords: "咖啡",
+    keywords: "coffee",
     page: 1
   }
 });
 
 return await window.ai_edge_gallery_get_result(payload);
 ```
-
