@@ -173,12 +173,15 @@
           };
         }
 
-        async function handle(payloadText) {
+        async function handle(payloadText, secret) {
           const payload = typeof payloadText === "string" ? JSON.parse(payloadText) : payloadText;
           ensure(payload, "intent");
-          ensure(payload, "apiKey");
+          const apiKey = secret;
+          if (!apiKey) {
+            throw new Error("Missing AMap API key secret");
+          }
 
-          const { intent, apiKey, params = {} } = payload;
+          const { intent, params = {} } = payload;
 
           if (intent === "keyword_search") return jsonOk(await keywordSearch(apiKey, params));
           if (intent === "nearby_search") return jsonOk(await nearbySearch(apiKey, params));
@@ -188,9 +191,9 @@
           return jsonErr(`Unsupported intent: ${intent}`);
         }
 
-        window.ai_edge_gallery_get_result = async function (payloadText) {
+        window.ai_edge_gallery_get_result = async function (payloadText, secret) {
           try {
-            return await handle(payloadText);
+            return await handle(payloadText, secret);
           } catch (err) {
             return jsonErr(err && err.message ? err.message : String(err));
           }
