@@ -1,6 +1,6 @@
 ---
 name: amap-lbs-edge-gallery
-description: Use this skill to call AMap (Gaode) Web Service APIs from Google AI Edge Gallery via run_js in a WebView sandbox. Supports keyword_search, nearby_search, route_planning, and heatmap generation without Node.js dependencies.
+description: Use this skill to call AMap (Gaode) Web Service APIs from Google AI Edge Gallery via run_js in a WebView sandbox. Minimal rollout currently supports keyword_search only.
 metadata:
   require-secret: true
   require-secret-description: 请输入高德 Web Service API Key
@@ -23,7 +23,7 @@ Provide a JSON string payload to `window.ai_edge_gallery_get_result(payload, sec
 Payload shape:
 ```json
 {
-  "intent": "keyword_search | nearby_search | route_planning | heatmap",
+  "intent": "keyword_search",
   "params": {}
 }
 ```
@@ -38,36 +38,16 @@ Payload shape:
 - `page` (optional, default 1)
 - `types` (optional)
 
-### 2) nearby_search
-`params`:
-- `location` (required, `lng,lat`)
-- `radius` (optional, meters, default 3000)
-- `keywords` (optional)
-- `types` (optional)
-- `sortrule` (optional, `distance` or `weight`)
-- `offset` (optional, default 20)
-- `page` (optional, default 1)
+## Rollout plan (restore in order)
+After single-function stabilization, restore intents in this exact order:
 
-### 3) route_planning
-`params`:
-- `origin` (required, `lng,lat`)
-- `destination` (required, `lng,lat`)
-- `mode` (optional, `driving | walking | bicycling`, default `driving`)
-- `strategy` (optional, driving strategy)
+1. `nearby_search`
+2. `route_planning`
+3. `heatmap`
 
-### 4) heatmap
-`params`:
-- `location` (required, `lng,lat`)
-- `radius` (optional, default 5000)
-- `keywords` (optional)
-- `types` (optional)
-- `pages` (optional, default 3)
-- `offset` (optional, default 25)
-
-Returns normalized `points` compatible with most heatmap renderers:
-```json
-[{ "lng": 116.397, "lat": 39.908, "weight": 1 }]
-```
+For each restored intent, keep the same guardrails:
+- return summary-oriented payloads;
+- enforce an explicit item count cap (`offset`/result limit).
 
 ## Secret handling
 Store the AMap key as a Gallery secret and pass it through the JS runtime `secret` parameter. Never hardcode the key in source files.
@@ -75,14 +55,19 @@ Store the AMap key as a Gallery secret and pass it through the JS runtime `secre
 ## Example run_js call pattern
 ```javascript
 const payload = JSON.stringify({
-  intent: "nearby_search",
+  intent: "keyword_search",
   params: {
-    location: "116.397428,39.90923",
-    radius: 2000,
     keywords: "coffee",
+    city: "beijing",
+    offset: 10,
     page: 1
   }
 });
 
 return await window.ai_edge_gallery_get_result(payload, secret);
+```
+
+Unsupported intents currently return:
+```text
+Unsupported intent during minimal rollout: <intent>
 ```

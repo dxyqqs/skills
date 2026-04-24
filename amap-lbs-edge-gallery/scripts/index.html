@@ -184,11 +184,8 @@
           const { intent, params = {} } = payload;
 
           if (intent === "keyword_search") return jsonOk(await keywordSearch(apiKey, params));
-          if (intent === "nearby_search") return jsonOk(await nearbySearch(apiKey, params));
-          if (intent === "route_planning") return jsonOk(await routePlanning(apiKey, params));
-          if (intent === "heatmap") return jsonOk(await heatmap(apiKey, params));
 
-          return jsonErr(`Unsupported intent: ${intent}`);
+          return jsonErr(`Unsupported intent during minimal rollout: ${intent}`);
         }
 
         window.ai_edge_gallery_get_result = async function (payloadText, secret) {
