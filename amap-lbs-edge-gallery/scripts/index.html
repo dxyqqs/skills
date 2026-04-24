@@ -54,15 +54,11 @@
         }
 
         function normalizePoi(poi) {
-          const [lng, lat] = (poi.location || "").split(",").map(Number);
           return {
             id: poi.id,
             name: poi.name,
             address: poi.address,
-            type: poi.type,
             location: poi.location,
-            lng,
-            lat,
           };
         }
 
@@ -79,8 +75,7 @@
           });
           return {
             count: Number(data.count || 0),
-            pois: (data.pois || []).map(normalizePoi),
-            raw: data,
+            pois: (data.pois || []).slice(0, 5).map(normalizePoi),
           };
         }
 
@@ -99,8 +94,7 @@
           });
           return {
             count: Number(data.count || 0),
-            pois: (data.pois || []).map(normalizePoi),
-            raw: data,
+            pois: (data.pois || []).slice(0, 5).map(normalizePoi),
           };
         }
 
@@ -127,10 +121,23 @@
           if (mode === "driving") query.strategy = params.strategy || 0;
 
           const data = await callAmap(path, query);
+          const route = data.route || {};
+          const firstPath = (route.paths || [])[0] || null;
+          const firstStep = firstPath && (firstPath.steps || [])[0] ? (firstPath.steps || [])[0] : null;
+
           return {
             mode,
-            route: data.route || null,
-            raw: data,
+            distance: firstPath ? Number(firstPath.distance || 0) : null,
+            duration: firstPath ? Number(firstPath.duration || 0) : null,
+            taxi_cost: firstPath && firstPath.taxi_cost !== undefined ? Number(firstPath.taxi_cost) : null,
+            step_summary: firstStep
+              ? {
+                  instruction: firstStep.instruction || null,
+                  road: firstStep.road || null,
+                  distance: firstStep.distance !== undefined ? Number(firstStep.distance) : null,
+                  duration: firstStep.duration !== undefined ? Number(firstStep.duration) : null,
+                }
+              : null,
           };
         }
 
@@ -165,7 +172,8 @@
               if (!Number.isFinite(lng) || !Number.isFinite(lat)) return null;
               return { lng, lat, weight: 1 };
             })
-            .filter(Boolean);
+            .filter(Boolean)
+            .slice(0, 200);
 
           return {
             total: points.length,
