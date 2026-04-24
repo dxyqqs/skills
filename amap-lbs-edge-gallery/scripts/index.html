@@ -9,6 +9,13 @@
     <script>
       (function () {
         const BASE = "https://restapi.amap.com";
+        const MAX_PAYLOAD_LENGTH = 4 * 1024;
+        const MAX_KEYWORDS_LENGTH = 200;
+        const MAX_CITY_LENGTH = 100;
+        const MAX_TYPES_LENGTH = 200;
+        const MAX_OFFSET = 20;
+        const MAX_PAGE = 3;
+        const MAX_HEATMAP_PAGES = 3;
 
         function jsonOk(result) {
           return JSON.stringify({ result });
@@ -26,6 +33,37 @@
         function ensure(input, field) {
           if (!input || input[field] === undefined || input[field] === null || input[field] === "") {
             throw new Error(`Missing required field: ${field}`);
+          }
+        }
+
+        function ensureMaxStringLength(input, field, maxLength) {
+          if (!input || input[field] === undefined || input[field] === null) return;
+          const value = String(input[field]);
+          if (value.length > maxLength) {
+            throw new Error(`${field} too long`);
+          }
+        }
+
+        function ensureMaxNumber(input, field, maxValue) {
+          if (!input || input[field] === undefined || input[field] === null || input[field] === "") return;
+          const value = Number(input[field]);
+          if (!Number.isFinite(value)) {
+            throw new Error(`${field} invalid`);
+          }
+          if (value > maxValue) {
+            throw new Error(`${field} too large`);
+          }
+        }
+
+        function validateParams(params, intent) {
+          ensureMaxStringLength(params, "keywords", MAX_KEYWORDS_LENGTH);
+          ensureMaxStringLength(params, "city", MAX_CITY_LENGTH);
+          ensureMaxStringLength(params, "types", MAX_TYPES_LENGTH);
+          ensureMaxNumber(params, "offset", MAX_OFFSET);
+          ensureMaxNumber(params, "page", MAX_PAGE);
+
+          if (intent === "heatmap") {
+            ensureMaxNumber(params, "pages", MAX_HEATMAP_PAGES);
           }
         }
 
@@ -174,6 +212,9 @@
         }
 
         async function handle(payloadText, secret) {
+          if (typeof payloadText === "string" && payloadText.length > MAX_PAYLOAD_LENGTH) {
+            throw new Error("payload too large");
+          }
           const payload = typeof payloadText === "string" ? JSON.parse(payloadText) : payloadText;
           ensure(payload, "intent");
           const apiKey = secret;
@@ -182,13 +223,14 @@
           }
 
           const { intent, params = {} } = payload;
+          validateParams(params, intent);
 
           if (intent === "keyword_search") return jsonOk(await keywordSearch(apiKey, params));
           if (intent === "nearby_search") return jsonOk(await nearbySearch(apiKey, params));
           if (intent === "route_planning") return jsonOk(await routePlanning(apiKey, params));
           if (intent === "heatmap") return jsonOk(await heatmap(apiKey, params));
 
-          return jsonErr(`Unsupported intent: ${intent}`);
+          return jsonErr("Unsupported intent");
         }
 
         window.ai_edge_gallery_get_result = async function (payloadText, secret) {
