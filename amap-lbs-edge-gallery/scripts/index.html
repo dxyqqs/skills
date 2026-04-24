@@ -14,13 +14,8 @@
           return JSON.stringify({ result });
         }
 
-        function jsonErr(message, details) {
-          return JSON.stringify({
-            error: {
-              message: String(message || "Unknown error"),
-              details: details || null,
-            },
-          });
+        function jsonErr(message) {
+          return JSON.stringify({ error: { message: String(message || "Unknown error") } });
         }
 
         function ensure(input, field) {
@@ -44,25 +39,17 @@
             throw new Error(`AMap HTTP error: ${resp.status}`);
           }
           const data = await resp.json();
-          if (Object.prototype.hasOwnProperty.call(data, "errcode") && String(data.errcode) !== "0") {
-            throw new Error(data.errmsg || data.errdetail || `AMap API error: ${data.errcode}`);
-          }
           if (data.status && String(data.status) !== "1") {
             throw new Error(data.info || data.infocode || "AMap API rejected request");
           }
           return data;
         }
 
-        function normalizePoi(poi) {
-          const [lng, lat] = (poi.location || "").split(",").map(Number);
+        function summarizePoi(poi) {
           return {
-            id: poi.id,
             name: poi.name,
             address: poi.address,
-            type: poi.type,
             location: poi.location,
-            lng,
-            lat,
           };
         }
 
@@ -73,103 +60,14 @@
             keywords: params.keywords,
             city: params.city,
             types: params.types,
-            offset: params.offset || 20,
+            offset: Math.min(Number(params.offset || 20), 20),
             page: params.page || 1,
             extensions: "base",
           });
+
           return {
             count: Number(data.count || 0),
-            pois: (data.pois || []).map(normalizePoi),
-            raw: data,
-          };
-        }
-
-        async function nearbySearch(apiKey, params) {
-          ensure(params, "location");
-          const data = await callAmap("/v3/place/around", {
-            key: apiKey,
-            location: params.location,
-            radius: params.radius || 3000,
-            keywords: params.keywords,
-            types: params.types,
-            sortrule: params.sortrule || "distance",
-            offset: params.offset || 20,
-            page: params.page || 1,
-            extensions: "base",
-          });
-          return {
-            count: Number(data.count || 0),
-            pois: (data.pois || []).map(normalizePoi),
-            raw: data,
-          };
-        }
-
-        async function routePlanning(apiKey, params) {
-          ensure(params, "origin");
-          ensure(params, "destination");
-          const mode = params.mode || "driving";
-          const routePathMap = {
-            driving: "/v5/direction/driving",
-            walking: "/v3/direction/walking",
-            bicycling: "/v4/direction/bicycling",
-          };
-          const path = routePathMap[mode];
-          if (!path) {
-            throw new Error("mode must be one of: driving, walking, bicycling");
-          }
-
-          const query = {
-            key: apiKey,
-            origin: params.origin,
-            destination: params.destination,
-          };
-
-          if (mode === "driving") query.strategy = params.strategy || 0;
-
-          const data = await callAmap(path, query);
-          return {
-            mode,
-            route: data.route || null,
-            raw: data,
-          };
-        }
-
-        async function heatmap(apiKey, params) {
-          ensure(params, "location");
-          const pages = Number(params.pages || 3);
-          const offset = Number(params.offset || 25);
-          const tasks = [];
-
-          for (let page = 1; page <= pages; page += 1) {
-            tasks.push(
-              callAmap("/v3/place/around", {
-                key: apiKey,
-                location: params.location,
-                radius: params.radius || 5000,
-                keywords: params.keywords,
-                types: params.types,
-                sortrule: params.sortrule || "distance",
-                offset,
-                page,
-                extensions: "base",
-              })
-            );
-          }
-
-          const pagesData = await Promise.all(tasks);
-          const pois = pagesData.flatMap((d) => d.pois || []);
-
-          const points = pois
-            .map((poi) => {
-              const [lng, lat] = (poi.location || "").split(",").map(Number);
-              if (!Number.isFinite(lng) || !Number.isFinite(lat)) return null;
-              return { lng, lat, weight: 1 };
-            })
-            .filter(Boolean);
-
-          return {
-            total: points.length,
-            points,
+            pois: (data.pois || []).slice(0, 5).map(summarizePoi),
           };
         }
 
@@ -181,14 +79,11 @@
             throw new Error("Missing AMap API key secret");
           }
 
-          const { intent, params = {} } = payload;
+          if (payload.intent !== "keyword_search") {
+            throw new Error("Only keyword_search is enabled in this minimal build");
+          }
 
-          if (intent === "keyword_search") return jsonOk(await keywordSearch(apiKey, params));
-          if (intent === "nearby_search") return jsonOk(await nearbySearch(apiKey, params));
-          if (intent === "route_planning") return jsonOk(await routePlanning(apiKey, params));
-          if (intent === "heatmap") return jsonOk(await heatmap(apiKey, params));
-
-          return jsonErr(`Unsupported intent: ${intent}`);
+          return jsonOk(await keywordSearch(apiKey, payload.params || {}));
         }
 
         window.ai_edge_gallery_get_result = async function (payloadText, secret) {
