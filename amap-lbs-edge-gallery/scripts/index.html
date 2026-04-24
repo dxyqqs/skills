@@ -44,6 +44,9 @@
             throw new Error(`AMap HTTP error: ${resp.status}`);
           }
           const data = await resp.json();
+          if (Object.prototype.hasOwnProperty.call(data, "errcode") && String(data.errcode) !== "0") {
+            throw new Error(data.errmsg || data.errdetail || `AMap API error: ${data.errcode}`);
+          }
           if (data.status && String(data.status) !== "1") {
             throw new Error(data.info || data.infocode || "AMap API rejected request");
           }
