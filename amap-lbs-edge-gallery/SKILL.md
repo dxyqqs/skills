@@ -1,6 +1,9 @@
 ---
 name: amap-lbs-edge-gallery
 description: Use this skill to call AMap (Gaode) Web Service APIs from Google AI Edge Gallery via run_js in a WebView sandbox. Supports keyword_search, nearby_search, route_planning, and heatmap generation without Node.js dependencies.
+metadata:
+  require-secret: true
+  require-secret-description: 请输入高德 Web Service API Key
 ---
 
 # AMap LBS Skill for AI Edge Gallery
@@ -15,13 +18,12 @@ Execute AMap LBS capabilities in AI Edge Gallery's JavaScript runtime (hidden We
 - Return `JSON.stringify({ error })` on failure.
 
 ## Inputs
-Provide a JSON string payload to `window.ai_edge_gallery_get_result(payload)`.
+Provide a JSON string payload to `window.ai_edge_gallery_get_result(payload, secret)`.
 
 Payload shape:
 ```json
 {
   "intent": "keyword_search | nearby_search | route_planning | heatmap",
-  "apiKey": "<AMAP_WEB_SERVICE_KEY>",
   "params": {}
 }
 ```
@@ -68,13 +70,12 @@ Returns normalized `points` compatible with most heatmap renderers:
 ```
 
 ## Secret handling
-Store the AMap key as a secret and pass it into the payload as `apiKey`. Never hardcode the key in source files.
+Store the AMap key as a Gallery secret and pass it through the JS runtime `secret` parameter. Never hardcode the key in source files.
 
 ## Example run_js call pattern
 ```javascript
 const payload = JSON.stringify({
   intent: "nearby_search",
-  apiKey: "{{AMAP_API_KEY}}",
   params: {
     location: "116.397428,39.90923",
     radius: 2000,
@@ -83,5 +84,5 @@ const payload = JSON.stringify({
   }
 });
 
-return await window.ai_edge_gallery_get_result(payload);
+return await window.ai_edge_gallery_get_result(payload, secret);
 ```
