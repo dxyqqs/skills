@@ -2,11 +2,9 @@
 
 This skill enables AMap (Gaode) Web Service API usage inside Google AI Edge Gallery through `run_js` in a WebView sandbox.
 
-## Features
-- Keyword POI search (`keyword_search`)
-- Nearby POI search (`nearby_search`)
-- Route planning (`route_planning`)
-- Heatmap point generation (`heatmap`)
+## Current minimal scope
+- Enabled intent: `keyword_search`
+- Response is summarized (max 5 POIs, no raw API payload) to avoid overly long model input.
 
 ## Requirements
 - A valid AMap Web Service API key
@@ -17,11 +15,14 @@ Send a JSON string payload:
 
 ```json
 {
-  "intent": "keyword_search | nearby_search | route_planning | heatmap",
-  "params": {}
+  "intent": "keyword_search",
+  "params": {
+    "keywords": "coffee",
+    "city": "beijing"
+  }
 }
 ```
 
 ## Security
-- Enable secret input in the skill metadata and pass the key with the JS `secret` parameter.
+- Pass the API key with the JS `secret` parameter.
 - Do not hardcode keys in source files.
